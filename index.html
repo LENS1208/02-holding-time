@@ -11,12 +11,27 @@
         header { text-align: center; color: white; margin-bottom: 30px; }
         h1 { font-size: 2.5em; margin-bottom: 10px; }
         .upload-section { background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .demo-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; border-radius: 25px; border: none; cursor: pointer; font-size: 1em; margin-left: 20px; transition: transform 0.2s; }
+        .demo-button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .filter-section { 
+            background: white; 
+            border-radius: 15px; 
+            padding: 20px; 
+            margin-bottom: 30px; 
+            display: none; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .filter-header { color: #667eea; font-size: 1.2em; font-weight: bold; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb; }
+        .filter-controls { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+        .filter-group { display: flex; flex-direction: column; }
+        .filter-group label { font-size: 0.9em; color: #666; margin-bottom: 5px; }
+        .filter-group select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; background-color: #f8f9fa; min-width: 180px; font-size: 0.95em; }
         .file-info { margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea; }
         .file-info h4 { color: #667eea; margin-bottom: 8px; font-size: 1em; }
         .file-info div { color: #666; font-size: 0.9em; line-height: 1.4; }
         .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; border-radius: 25px; }
         #fileInput { position: absolute; left: -9999px; }
-        .analysis-section { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+        .analysis-section { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 30px; }
         .metric-card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); position: relative; }
         .metric-card h3 { color: #667eea; margin-bottom: 15px; font-size: 1.2em; display: flex; align-items: center; gap: 8px; }
         .help-icon { cursor: pointer; color: #9ca3af; font-size: 0.9em; opacity: 0.7; transition: opacity 0.2s; }
@@ -67,9 +82,12 @@
 
         <div class="upload-section">
             <h2>取引履歴ファイルをアップロード</h2>
-            <div class="file-input-wrapper">
-                <input type="file" id="fileInput" accept=".html,.htm" />
-                <label for="fileInput">ファイルを選択</label>
+            <div style="display: flex; align-items: center;">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept=".html,.htm" />
+                    <label for="fileInput">ファイルを選択</label>
+                </div>
+                <button class="demo-button" onclick="loadDemoData()">デモデータで試す</button>
             </div>
             <div id="fileName" style="margin-top: 10px; color: #666;"></div>
             <div id="fileInfo" class="file-info" style="display: none;">
@@ -82,6 +100,56 @@
                 <p>分析中...</p>
             </div>
             <div class="error-message" id="errorMessage"></div>
+        </div>
+
+        <!-- フィルターセクション -->
+        <div class="filter-section" id="filterSection">
+            <div class="filter-header">フィルター設定</div>
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="symbolFilter">通貨ペア</label>
+                    <select id="symbolFilter">
+                        <option value="all">すべての通貨ペア</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="positionFilter">ロング／ショート</label>
+                    <select id="positionFilter">
+                        <option value="all">すべてのポジション</option>
+                        <option value="buy">ロング（買い）のみ</option>
+                        <option value="sell">ショート（売り）のみ</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="weekdayFilter">曜日</label>
+                    <select id="weekdayFilter">
+                        <option value="all">すべての曜日</option>
+                        <option value="1">月曜日</option>
+                        <option value="2">火曜日</option>
+                        <option value="3">水曜日</option>
+                        <option value="4">木曜日</option>
+                        <option value="5">金曜日</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="timeFilter">時間帯（日本時間）</label>
+                    <select id="timeFilter">
+                        <option value="all">すべての時間</option>
+                        <option value="morning">朝（6:00-11:59）</option>
+                        <option value="afternoon">昼（12:00-17:59）</option>
+                        <option value="evening">夜（18:00-23:59）</option>
+                        <option value="night">深夜（0:00-5:59）</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="resultFilter">勝敗</label>
+                    <select id="resultFilter">
+                        <option value="all">すべての取引</option>
+                        <option value="win">勝ちトレードのみ</option>
+                        <option value="loss">負けトレードのみ</option>
+                    </select>
+                </div>
+            </div>
         </div>
 
         <div id="analysisRoot"></div>
@@ -111,6 +179,7 @@
     <script>
         // --- グローバル変数 ---
         let allTrades = [];
+        let filteredTrades = [];
         let activeCharts = [];
 
         // --- DOM要素の取得 ---
@@ -122,6 +191,12 @@
         const loadingEl = document.getElementById('loading');
         const errorEl = document.getElementById('errorMessage');
         const analysisRootEl = document.getElementById('analysisRoot');
+        const filterSectionEl = document.getElementById('filterSection');
+        const symbolFilterEl = document.getElementById('symbolFilter');
+        const positionFilterEl = document.getElementById('positionFilter');
+        const weekdayFilterEl = document.getElementById('weekdayFilter');
+        const timeFilterEl = document.getElementById('timeFilter');
+        const resultFilterEl = document.getElementById('resultFilter');
         const popupOverlay = document.getElementById('popupOverlay');
         const popupTitle = document.getElementById('popupTitle');
         const popupBody = document.getElementById('popupBody');
@@ -147,11 +222,142 @@
 
         // --- イベントリスナー ---
         fileInput.addEventListener('change', handleFileUpload);
+        symbolFilterEl.addEventListener('change', applyFilters);
+        positionFilterEl.addEventListener('change', applyFilters);
+        weekdayFilterEl.addEventListener('change', applyFilters);
+        timeFilterEl.addEventListener('change', applyFilters);
+        resultFilterEl.addEventListener('change', applyFilters);
         popupClose.addEventListener('click', closePopup);
         popupOverlay.addEventListener('click', (e) => {
             if (e.target === popupOverlay) closePopup();
         });
         sidePanelClose.addEventListener('click', closeSidePanel);
+        
+        // デモデータ生成関数
+        window.loadDemoData = function() {
+            console.log('Loading demo data...');
+            setLoading(true);
+            
+            // デモデータを生成
+            const demoTrades = generateDemoTrades();
+            allTrades = demoTrades;
+            filteredTrades = [...allTrades];
+            
+            fileNameEl.textContent = 'デモデータを使用中';
+            displayFileInfo(allTrades);
+            populateFilters();
+            
+            // フィルターセクションを確実に表示
+            const filterSection = document.getElementById('filterSection');
+            if (filterSection) {
+                filterSection.style.display = 'block';
+                console.log('Filter section displayed');
+            }
+            
+            renderAnalysis(filteredTrades);
+            setLoading(false);
+        };
+        
+        function generateDemoTrades() {
+            const trades = [];
+            const symbols = ['USDJPY', 'EURUSD', 'GBPUSD', 'AUDUSD', 'EURJPY'];
+            const baseDate = new Date(2024, 0, 1); // 2024年1月1日から
+            
+            for (let i = 0; i < 100; i++) {
+                const openTime = new Date(baseDate.getTime() + Math.random() * 90 * 24 * 60 * 60 * 1000); // 90日間のランダム
+                const duration = Math.random() * 48 * 60 * 60 * 1000; // 最大48時間
+                const closeTime = new Date(openTime.getTime() + duration);
+                const isWin = Math.random() > 0.45; // 勝率55%
+                const profit = isWin ? 
+                    (Math.random() * 50000 + 5000) : // 勝ち: 5,000-55,000円
+                    -(Math.random() * 30000 + 5000);  // 負け: -5,000--35,000円
+                
+                trades.push({
+                    ticket: `#${100000 + i}`,
+                    openTime: openTime,
+                    closeTime: closeTime,
+                    type: Math.random() > 0.5 ? 'buy' : 'sell',
+                    size: 0.1,
+                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
+                    profit: profit,
+                    isWin: isWin,
+                    duration: duration
+                });
+            }
+            
+            return trades.sort((a, b) => a.openTime.getTime() - b.openTime.getTime());
+        }
+        
+        function populateFilters() {
+            // 通貨ペアフィルター
+            const symbols = [...new Set(allTrades.map(t => t.symbol))];
+            symbolFilterEl.innerHTML = '<option value="all">すべての通貨ペア</option>';
+            symbols.sort().forEach(symbol => {
+                const option = document.createElement('option');
+                option.value = symbol;
+                option.textContent = symbol;
+                symbolFilterEl.appendChild(option);
+            });
+        }
+        
+        function applyFilters() {
+            if (!allTrades || allTrades.length === 0) {
+                console.log('No trades to filter');
+                return;
+            }
+            
+            filteredTrades = [...allTrades];
+            console.log(`Starting with ${filteredTrades.length} trades`);
+            
+            // 通貨ペアフィルター
+            const symbol = symbolFilterEl.value;
+            if (symbol !== 'all') {
+                filteredTrades = filteredTrades.filter(t => t.symbol === symbol);
+                console.log(`After symbol filter: ${filteredTrades.length} trades`);
+            }
+            
+            // ポジションフィルター
+            const position = positionFilterEl.value;
+            if (position !== 'all') {
+                filteredTrades = filteredTrades.filter(t => t.type === position);
+                console.log(`After position filter: ${filteredTrades.length} trades`);
+            }
+            
+            // 曜日フィルター
+            const weekday = weekdayFilterEl.value;
+            if (weekday !== 'all') {
+                filteredTrades = filteredTrades.filter(t => t.openTime.getDay() === parseInt(weekday));
+                console.log(`After weekday filter: ${filteredTrades.length} trades`);
+            }
+            
+            // 時間帯フィルター
+            const timeRange = timeFilterEl.value;
+            if (timeRange !== 'all') {
+                filteredTrades = filteredTrades.filter(t => {
+                    const hour = t.openTime.getHours();
+                    switch(timeRange) {
+                        case 'morning': return hour >= 6 && hour < 12;
+                        case 'afternoon': return hour >= 12 && hour < 18;
+                        case 'evening': return hour >= 18 && hour < 24;
+                        case 'night': return hour >= 0 && hour < 6;
+                        default: return true;
+                    }
+                });
+                console.log(`After time filter: ${filteredTrades.length} trades`);
+            }
+            
+            // 勝敗フィルター
+            const result = resultFilterEl.value;
+            if (result === 'win') {
+                filteredTrades = filteredTrades.filter(t => t.isWin);
+                console.log(`After win filter: ${filteredTrades.length} trades`);
+            } else if (result === 'loss') {
+                filteredTrades = filteredTrades.filter(t => !t.isWin);
+                console.log(`After loss filter: ${filteredTrades.length} trades`);
+            }
+            
+            renderAnalysis(filteredTrades);
+        }
         
         // --- メインロジック ---
         function handleFileUpload(event) {
@@ -184,8 +390,11 @@
                         duration: trade.closeTime.getTime() - trade.openTime.getTime()
                     })).sort((a, b) => a.openTime.getTime() - b.openTime.getTime());
                     
+                    filteredTrades = [...allTrades];
                     displayFileInfo(allTrades);
-                    renderAnalysis(allTrades);
+                    populateFilters();
+                    filterSectionEl.style.display = 'block';
+                    renderAnalysis(filteredTrades);
                 } else {
                     showError('ファイルから取引データが見つかりませんでした。');
                 }
@@ -297,32 +506,17 @@
         }
 
         function renderAnalysis(trades) {
-            resetAnalysisView();
+            resetAnalysisView(true); // フィルターは維持
             
-            if (trades.length === 0) {
-                showError("取引データがありません。");
+            if (!trades || trades.length === 0) {
+                showError("選択された条件に一致する取引データがありません。");
                 return;
             }
 
+            console.log(`Rendering analysis for ${trades.length} trades`);
             const stats = calculateStatistics(trades);
             
             analysisRootEl.innerHTML = `
-                <!-- 基本統計 -->
-                <div class="analysis-section">
-                    <div class="metric-card">
-                        <h3>総取引数<span class="help-icon" onclick="showHelp('総取引数')">?</span></h3>
-                        <div class="metric-value neutral">${stats.totalTrades}回</div>
-                    </div>
-                    <div class="metric-card">
-                        <h3>勝率<span class="help-icon" onclick="showHelp('勝率')">?</span></h3>
-                        <div class="metric-value ${stats.winRatePercent >= 50 ? 'positive' : 'negative'}">${stats.winRatePercent}%</div>
-                    </div>
-                    <div class="metric-card">
-                        <h3>総損益<span class="help-icon" onclick="showHelp('総損益')">?</span></h3>
-                        <div class="metric-value ${stats.totalProfit >= 0 ? 'positive' : 'negative'}">¥${Math.round(stats.totalProfit).toLocaleString()}</div>
-                    </div>
-                </div>
-                
                 <!-- 保有時間メトリクス -->
                 <div class="analysis-section">
                     <div class="metric-card">
@@ -333,10 +527,6 @@
                         <h3>負けトレード平均保有時間<span class="help-icon" onclick="showHelp('負けトレード平均保有時間')">?</span></h3>
                         <div class="metric-value negative">${formatDuration(stats.avgLossDuration)}</div>
                     </div>
-                </div>
-                
-                <!-- 最長・最短保有時間 -->
-                <div class="analysis-section">
                     <div class="metric-card">
                         <h3>最長保有時間（勝ち）<span class="help-icon" onclick="showHelp('最長保有時間（勝ち）')">?</span></h3>
                         <div class="metric-value neutral">${formatDuration(stats.maxWinDuration)}</div>
@@ -423,6 +613,10 @@
             const ctx = document.getElementById('durationChart');
             if (!ctx) return;
             
+            // 既存のチャートがあれば破棄
+            activeCharts.forEach(chart => chart.destroy());
+            activeCharts = [];
+            
             // 保有時間を範囲別に分類（分単位）
             const ranges = [
                 { min: 0, max: 30, label: '〜30分' },
@@ -505,22 +699,22 @@
         }
 
         function showDurationDrillDown(range, trades) {
-            // 該当する保有時間範囲の取引を抽出
-            const filteredTrades = trades.filter(t => {
+            // フィルター適用後のデータから該当する保有時間範囲の取引を抽出
+            const filteredRangeTrades = trades.filter(t => {
                 const minutes = t.duration / 60000;
                 return minutes > range.min && minutes <= range.max;
             });
             
-            if (filteredTrades.length === 0) {
+            if (filteredRangeTrades.length === 0) {
                 alert('この時間範囲にはデータがありません。');
                 return;
             }
             
-            const winTrades = filteredTrades.filter(t => t.isWin);
-            const lossTrades = filteredTrades.filter(t => !t.isWin);
-            const totalProfit = filteredTrades.reduce((sum, t) => sum + t.profit, 0);
-            const avgProfit = totalProfit / filteredTrades.length;
-            const winRate = (winTrades.length / filteredTrades.length * 100).toFixed(1);
+            const winTrades = filteredRangeTrades.filter(t => t.isWin);
+            const lossTrades = filteredRangeTrades.filter(t => !t.isWin);
+            const totalProfit = filteredRangeTrades.reduce((sum, t) => sum + t.profit, 0);
+            const avgProfit = totalProfit / filteredRangeTrades.length;
+            const winRate = (winTrades.length / filteredRangeTrades.length * 100).toFixed(1);
             
             sidePanelTitle.textContent = `保有時間 ${range.label} の詳細分析`;
             
@@ -529,7 +723,7 @@
                     <h3>基本統計</h3>
                     <div class="drill-stats">
                         <div class="drill-stat-item">
-                            <div class="drill-stat-value">${filteredTrades.length}回</div>
+                            <div class="drill-stat-value">${filteredRangeTrades.length}回</div>
                             <div class="drill-stat-label">総取引数</div>
                         </div>
                         <div class="drill-stat-item">
@@ -580,7 +774,7 @@
                     <div class="drill-insights">
                         <h4>パフォーマンス評価</h4>
                         <ul>
-                            ${generateInsights(range, winRate, avgProfit, filteredTrades)}
+                            ${generateInsights(range, winRate, avgProfit, filteredRangeTrades)}
                         </ul>
                     </div>
                 </div>
@@ -640,10 +834,15 @@
             sidePanel.classList.remove('open');
         }
 
-        function resetAnalysisView() {
+        function resetAnalysisView(keepFilters = false) {
             analysisRootEl.innerHTML = '';
             errorEl.style.display = 'none';
-            fileInfoEl.style.display = 'none';
+            
+            if (!keepFilters) {
+                fileInfoEl.style.display = 'none';
+                filterSectionEl.style.display = 'none';
+            }
+            
             activeCharts.forEach(chart => chart.destroy());
             activeCharts = [];
         }
