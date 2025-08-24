@@ -998,11 +998,8 @@
         const sidePanelContent = document.getElementById('sidePanelContent');
         const sidePanelClose = document.getElementById('sidePanelClose');
         
-        // オーバーレイ要素を動的に作成
-        const sidePanelOverlay = document.createElement('div');
-        sidePanelOverlay.className = 'side-panel-overlay';
-        sidePanelOverlay.id = 'sidePanelOverlay';
-        document.body.appendChild(sidePanelOverlay);
+        // サイドパネルのオーバーレイ要素を取得
+        const sidePanelOverlay = document.getElementById('sidePanelOverlay');
 
         // --- ヘルプ説明文 ---
         const helpTexts = {
@@ -1964,6 +1961,7 @@
             `;
             
             sidePanel.classList.add('open');
+            sidePanelOverlay.classList.add('open');
         }
 
         function generateInsights(range, winRate, avgProfit, trades) {
@@ -2015,6 +2013,7 @@
 
         function closeSidePanel() {
             sidePanel.classList.remove('open');
+            sidePanelOverlay.classList.remove('open');
         }
 
         function resetAnalysisView(keepFilters = false) {
