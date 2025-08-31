@@ -5,489 +5,686 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FX取引履歴分析ツール - 保有時間分析版</title>
     <style>
+        /* CSS変数で色を管理 */
         :root {
-            /* ダークモードカラーパレット（デフォルト） */
-            --bg-primary: #000000;
-            --bg-secondary: #181818;
-            --bg-tertiary: #232323;
-            --bg-border: #373737;
-            --color-positive: #00c8ff;
-            --color-negative: #ff3200;
-            --text-primary: #ffffff;
-            --text-secondary: #ffffff;
-            --color-neutral: #ffffff;
-        }
-        
-        /* ライトモード */
-        [data-theme="light"] {
+            /* ライトモード */
             --bg-primary: #ffffff;
             --bg-secondary: #fafafa;
             --bg-tertiary: #f5f5f5;
-            --bg-border: #ebebeb;
-            --color-positive: #007eff;
-            --color-negative: #ff2800;
-            --text-primary: #333333;
-            --text-secondary: #333333;
-            --color-neutral: #333333;
+            --border-color: #ebebeb;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --text-muted: #999;
+            --positive-color: #007eff;
+            --negative-color: #ff2800;
+            --neutral-color: #6b7280;
+            
+            /* カード用 */
+            --card-bg: #ffffff;
+            --card-border: #ebebeb;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            --hover-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            
+            /* ボタン用 */
+            --button-bg: #007eff;
+            --button-hover-shadow: 0 4px 12px rgba(0, 126, 255, 0.3);
+            
+            /* Chart.js用のグリッド線の色 */
+            --chart-grid-color: rgba(0, 0, 0, 0.1);
+            --chart-text-color: #666;
         }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
+        /* ダークモード */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #000000;
+                --bg-secondary: #181818;
+                --bg-tertiary: #232323;
+                --border-color: #373737;
+                --text-primary: #e0e0e0;
+                --text-secondary: #aaa;
+                --text-muted: #777;
+                --positive-color: #00c8ff;
+                --negative-color: #ff3200;
+                
+                --card-bg: #181818;
+                --card-border: #373737;
+                --card-shadow: 0 2px 8px rgba(0,0,0,0.4);
+                --hover-shadow: 0 8px 24px rgba(0, 200, 255, 0.15);
+                
+                --button-bg: #00c8ff;
+                --button-hover-shadow: 0 4px 12px rgba(0, 200, 255, 0.3);
+                
+                /* ダークモード用のChart.jsグリッド線 */
+                --chart-grid-color: rgba(255, 255, 255, 0.2);
+                --chart-text-color: #aaa;
+            }
+        }
+
+        /* ダークモード手動切り替え用 */
+        body.dark-mode {
+            --bg-primary: #000000;
+            --bg-secondary: #181818;
+            --bg-tertiary: #232323;
+            --border-color: #373737;
+            --text-primary: #e0e0e0;
+            --text-secondary: #aaa;
+            --text-muted: #777;
+            --positive-color: #00c8ff;
+            --negative-color: #ff3200;
+            
+            --card-bg: #181818;
+            --card-border: #373737;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            --hover-shadow: 0 8px 24px rgba(0, 200, 255, 0.15);
+            
+            --button-bg: #00c8ff;
+            --button-hover-shadow: 0 4px 12px rgba(0, 200, 255, 0.3);
+            
+            /* ダークモード用のChart.jsグリッド線 */
+            --chart-grid-color: rgba(255, 255, 255, 0.2);
+            --chart-text-color: #aaa;
+        }
+
+        /* 基本スタイル */
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
             background: var(--bg-primary);
             min-height: 100vh; 
             color: var(--text-primary);
-            transition: background 0.3s ease, color 0.3s ease;
+            line-height: 1.6;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        
-        /* テーマ切り替えボタン */
-        .theme-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--bg-secondary);
-            border: 1px solid var(--bg-border);
-            border-radius: 50px;
-            padding: 8px 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 1000;
-            transition: all 0.3s ease;
-        }
-        
-        .theme-toggle:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-        
-        .theme-toggle-icon {
-            font-size: 1.2em;
-        }
-        
-        .theme-toggle-text {
-            font-size: 0.9em;
-            color: var(--text-primary);
-        }
-        
-        [data-theme="light"] .theme-toggle {
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        [data-theme="light"] .file-input-wrapper,
-        [data-theme="light"] .demo-button {
-            box-shadow: 0 2px 8px rgba(0, 126, 255, 0.2);
-        }
-        
-        [data-theme="light"] .upload-section,
-        [data-theme="light"] .filter-section,
-        [data-theme="light"] .trading-style-section,
-        [data-theme="light"] .metric-card,
-        [data-theme="light"] .chart-container,
-        [data-theme="light"] header {
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-        
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
-            background: var(--bg-primary);
-            min-height: 100vh; 
-            color: var(--text-primary);
-        }
-        
+
         .container { 
-            max-width: 1400px; 
+            max-width: 1200px; 
             margin: 0 auto; 
-            padding: 20px; 
+            padding: 40px 20px; 
         }
-        
+
+        /* ヘッダー */
         header { 
             text-align: center; 
-            color: var(--text-primary);
-            margin-bottom: 30px; 
-            padding: 20px;
+            margin-bottom: 40px;
+            padding: 30px 20px;
             background: var(--bg-secondary);
-            border-radius: 15px;
-            border: 1px solid var(--bg-border);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow);
+            position: relative;
         }
-        
+
         h1 { 
-            font-size: 2.5em; 
-            margin-bottom: 10px;
+            font-size: 2em; 
+            font-weight: 700;
+            margin-bottom: 8px;
             color: var(--text-primary);
+            letter-spacing: 0.02em;
         }
-        
+
         header p {
             color: var(--text-secondary);
+            font-size: 0.95em;
         }
-        
-        .upload-section { 
-            background: var(--bg-secondary);
-            border-radius: 15px; 
-            padding: 30px; 
-            border: 1px solid var(--bg-border);
-            margin-bottom: 30px; 
-        }
-        
-        .upload-section h2 {
+
+        h2 {
+            font-size: 1.3em;
+            font-weight: 600;
             color: var(--text-primary);
             margin-bottom: 20px;
         }
-        
+
+        h3 {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        /* ダークモード切り替えボタン */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+
+        .theme-toggle:hover {
+            background: var(--border-color);
+        }
+
+        .theme-toggle svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .theme-toggle-text {
+            display: none;
+        }
+
+        @media (min-width: 768px) {
+            .theme-toggle-text {
+                display: inline;
+            }
+        }
+
+        /* アップロードセクション */
+        .upload-section { 
+            background: var(--bg-secondary);
+            border-radius: 12px; 
+            padding: 24px; 
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow);
+        }
+
+        .upload-section h2 {
+            font-size: 1.1em;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .upload-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper { 
+            position: relative; 
+            overflow: hidden; 
+            display: inline-block; 
+            cursor: pointer; 
+            background: var(--button-bg);
+            color: white; 
+            padding: 10px 24px; 
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: none;
+        }
+
+        .file-input-wrapper:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--button-hover-shadow);
+        }
+
+        #fileInput { 
+            display: none;
+        }
+
         .demo-button { 
-            background: var(--color-positive);
-            color: #ffffff;
-            padding: 12px 30px; 
-            border-radius: 25px; 
+            background: var(--button-bg);
+            color: white;
+            padding: 10px 24px; 
+            border-radius: 8px; 
             border: none; 
             cursor: pointer; 
-            font-size: 1em; 
-            margin-left: 20px; 
-            transition: opacity 0.2s, transform 0.2s;
+            font-size: 0.9em; 
+            font-weight: 500;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        
+
         .demo-button:hover { 
-            opacity: 0.9;
-            transform: translateY(-2px);
+            transform: translateY(-1px);
+            box-shadow: var(--button-hover-shadow);
         }
-        
+
+        #fileName {
+            margin-top: 12px;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .file-info { 
+            margin-top: 16px; 
+            padding: 12px 16px; 
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            font-size: 0.9em;
+            border: 1px solid var(--border-color);
+        }
+
+        .file-info h4 { 
+            color: var(--text-primary);
+            margin-bottom: 4px; 
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .file-info div { 
+            color: var(--text-secondary);
+            font-size: 0.85em; 
+        }
+
+        /* デモコントロール */
+        .demo-controls {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow);
+        }
+
+        .demo-controls h3 {
+            font-size: 1em;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .demo-controls button {
+            background: var(--button-bg);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 4px;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .demo-controls button:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--button-hover-shadow);
+        }
+
+        /* フィルターセクション */
         .filter-section { 
             background: var(--bg-secondary);
-            border-radius: 15px; 
+            border-radius: 12px; 
             padding: 20px; 
-            margin-bottom: 30px; 
+            margin-bottom: 24px; 
             display: none; 
-            border: 1px solid var(--bg-border);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow);
         }
-        
+
         .filter-header { 
             color: var(--text-primary);
-            font-size: 1.2em; 
-            font-weight: bold; 
+            font-size: 1.1em; 
+            font-weight: 600; 
             margin-bottom: 20px; 
             padding-bottom: 10px; 
-            border-bottom: 2px solid var(--bg-border);
+            border-bottom: 2px solid var(--border-color);
         }
-        
+
         .filter-controls { 
             display: flex; 
             flex-wrap: wrap; 
             gap: 20px; 
             align-items: center; 
         }
-        
+
         .filter-group { 
             display: flex; 
             flex-direction: column; 
         }
-        
+
         .filter-group label { 
             font-size: 0.9em; 
             color: var(--text-secondary);
             margin-bottom: 5px; 
+            font-weight: 500;
         }
-        
+
         .filter-group select { 
             padding: 8px 12px; 
-            border: 1px solid var(--bg-border);
+            border: 1px solid var(--border-color);
             border-radius: 8px; 
             background-color: var(--bg-tertiary);
             color: var(--text-primary);
             min-width: 180px; 
-            font-size: 0.95em; 
-        }
-        
-        .file-info { 
-            margin-top: 15px; 
-            padding: 15px; 
-            background: var(--bg-tertiary);
-            border-radius: 8px; 
-            border-left: 4px solid var(--color-positive);
-        }
-        
-        .file-info h4 { 
-            color: var(--text-primary);
-            margin-bottom: 8px; 
-            font-size: 1em; 
-        }
-        
-        .file-info div { 
-            color: var(--text-secondary);
             font-size: 0.9em; 
-            line-height: 1.4; 
+            transition: border-color 0.2s ease;
         }
-        
-        .file-input-wrapper { 
-            position: relative; 
-            overflow: hidden; 
-            display: inline-block; 
-            cursor: pointer; 
-            background: var(--color-positive);
-            color: #ffffff;
-            padding: 12px 30px; 
-            border-radius: 25px; 
+
+        .filter-group select:focus {
+            border-color: var(--positive-color);
+            outline: none;
         }
-        
-        #fileInput { 
-            position: absolute; 
-            left: -9999px; 
-        }
-        
-        #fileName {
-            margin-top: 10px;
-            color: var(--text-secondary);
-        }
-        
+
         /* トレードスタイルセクション */
         .trading-style-section {
             background: var(--bg-secondary);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            border: 1px solid var(--bg-border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow);
         }
-        
+
         .trading-style-header {
             color: var(--text-primary);
-            font-size: 1.2em;
-            font-weight: bold;
+            font-size: 1.1em;
+            font-weight: 600;
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 2px solid var(--bg-border);
+            border-bottom: 2px solid var(--border-color);
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        
+
         .section-icon {
             font-size: 1.3em;
         }
-        
+
         .trading-style-viz {
             display: grid;
             grid-template-columns: 1fr;
             gap: 20px;
             margin-top: 20px;
         }
-        
+
         .style-viz-container {
             background: var(--bg-tertiary);
             border-radius: 12px;
             padding: 20px;
-            border: 1px solid var(--bg-border);
+            border: 1px solid var(--border-color);
         }
-        
+
         .style-performance-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 15px;
+            gap: 16px;
         }
-        
+
         .style-perf-card {
-            background: var(--bg-tertiary);
-            border-radius: 10px;
-            padding: 15px;
-            border: 1px solid var(--bg-border);
-            transition: all 0.3s ease;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
         }
-        
+
         .style-perf-card:hover {
             transform: translateY(-2px);
-            border-color: var(--color-positive);
+            box-shadow: var(--hover-shadow);
         }
-        
+
         .style-perf-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid var(--bg-border);
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
         }
-        
+
         .style-perf-title {
-            font-weight: bold;
+            font-weight: 600;
             color: var(--text-primary);
             font-size: 1em;
         }
-        
+
         .style-perf-time {
             font-size: 0.85em;
             color: var(--text-secondary);
+            font-weight: 500;
         }
-        
+
         .style-perf-metrics {
             display: grid;
             gap: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
-        
+
         .style-perf-metric {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 4px 0;
         }
-        
+
         .style-perf-metric .metric-label {
             font-size: 0.9em;
             color: var(--text-secondary);
         }
-        
+
         .style-perf-metric .metric-value {
-            font-weight: bold;
+            font-weight: 600;
             font-size: 1em;
         }
-        
+
         .metric-value.positive {
-            color: var(--color-positive);
+            color: var(--positive-color);
         }
-        
+
         .metric-value.negative {
-            color: var(--color-negative);
+            color: var(--negative-color);
         }
-        
+
         .metric-value.neutral {
-            color: var(--color-neutral);
+            color: var(--text-primary);
         }
-        
+
         .style-perf-recommendation {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid var(--bg-border);
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
             font-size: 0.85em;
             line-height: 1.4;
             color: var(--text-secondary);
         }
-        
+
         .style-perf-recommendation.excellent {
-            color: var(--color-positive);
+            color: var(--positive-color);
             font-weight: 500;
         }
-        
+
         .style-perf-recommendation.warning {
             color: var(--text-secondary);
             font-weight: 500;
         }
-        
+
         .style-perf-recommendation.danger {
-            color: var(--color-negative);
+            color: var(--negative-color);
             font-weight: 500;
         }
-        
+
+        /* 分析セクション */
         .analysis-section { 
             display: grid; 
-            gap: 15px; 
+            gap: 16px; 
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-            margin-bottom: 30px; 
+            margin-bottom: 24px; 
         }
-        
+
         .metric-card { 
-            background: var(--bg-tertiary);
-            border-radius: 10px; 
-            padding: 15px; 
-            border: 1px solid var(--bg-border);
-            transition: all 0.3s ease;
+            background: var(--card-bg);
+            border-radius: 12px; 
+            padding: 20px; 
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
         }
-        
+
         .metric-card:hover {
             transform: translateY(-2px);
-            border-color: var(--color-positive);
+            box-shadow: var(--hover-shadow);
         }
-        
+
         .metric-card-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid var(--bg-border);
+            align-items: flex-start;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
         }
-        
+
         .metric-card-title {
-            font-weight: bold;
+            font-weight: 600;
             color: var(--text-primary);
             font-size: 1em;
         }
-        
-        .metric-card-subtitle {
-            font-size: 0.85em;
-            color: var(--text-secondary);
-        }
-        
+
         .metric-card-value {
-            font-size: 1.8em;
-            font-weight: bold;
+            font-size: 2.5em;
+            font-weight: 700;
             text-align: center;
             padding: 20px 0;
+            color: var(--text-primary);
+            line-height: 1;
         }
-        
+
         .help-icon { 
             cursor: pointer; 
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-size: 0.9em; 
             opacity: 0.7; 
             transition: opacity 0.2s; 
         }
-        
+
         .help-icon:hover { 
             opacity: 1; 
+            color: var(--text-secondary);
         }
-        
+
+        /* チャートコンテナ */
+        .chart-container { 
+            background: var(--bg-secondary);
+            border-radius: 12px; 
+            padding: 24px; 
+            margin-top: 20px; 
+            border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow);
+        }
+
+        .chart-container h3 {
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ローディング */
+        .loading { 
+            display: none; 
+            text-align: center; 
+            padding: 20px; 
+            color: var(--text-secondary);
+        }
+
+        .spinner { 
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--positive-color);
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 1s linear infinite; 
+            margin: 0 auto 12px; 
+        }
+
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+
+        /* エラーメッセージ */
+        .error-message { 
+            background: rgba(255, 40, 0, 0.1);
+            color: var(--negative-color);
+            padding: 12px 16px; 
+            border-radius: 8px; 
+            margin-top: 16px; 
+            display: none;
+            border: 1px solid rgba(255, 40, 0, 0.2);
+            font-size: 0.9em;
+        }
+
+        /* ポップアップ */
         .popup-overlay { 
             position: fixed; 
             top: 0; 
             left: 0; 
             width: 100%; 
             height: 100%; 
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.5);
             z-index: 1000; 
             display: none; 
             align-items: center; 
             justify-content: center; 
+            padding: 20px;
         }
-        
+
         .popup-content { 
-            background: var(--bg-secondary);
+            background: var(--card-bg);
             border-radius: 12px; 
             padding: 25px; 
             max-width: 400px; 
             margin: 20px; 
-            border: 1px solid var(--bg-border);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
         }
-        
+
         .popup-header { 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
             margin-bottom: 15px; 
         }
-        
+
         .popup-title { 
             font-size: 1.2em; 
-            font-weight: bold; 
+            font-weight: 600; 
             color: var(--text-primary);
         }
-        
+
         .popup-close { 
             cursor: pointer; 
             font-size: 1.5em; 
             color: var(--text-secondary);
             font-weight: bold; 
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
         }
-        
+
         .popup-close:hover { 
             color: var(--text-primary);
+            background: var(--bg-tertiary);
         }
-        
+
         .popup-body { 
             color: var(--text-secondary);
             line-height: 1.6; 
+            font-size: 0.95em;
         }
-        
-        /* サイドパネル用スタイル */
+
+        /* サイドパネル */
         .side-panel-overlay {
             position: fixed;
             top: 0;
@@ -500,12 +697,12 @@
             pointer-events: none;
             transition: opacity 0.3s ease;
         }
-        
+
         .side-panel-overlay.open {
             opacity: 1;
             pointer-events: auto;
         }
-        
+
         .side-panel { 
             position: fixed; 
             top: 0; 
@@ -516,16 +713,17 @@
             z-index: 1100; 
             transition: right 0.3s ease; 
             overflow-y: auto; 
-            border-left: 1px solid var(--bg-border);
+            border-left: 1px solid var(--border-color);
+            box-shadow: -10px 0 30px rgba(0,0,0,0.2);
         }
-        
+
         .side-panel.open { 
             right: 0; 
         }
-        
+
         .side-panel-header { 
             padding: 20px; 
-            border-bottom: 1px solid var(--bg-border);
+            border-bottom: 1px solid var(--border-color);
             background: var(--bg-tertiary);
             display: flex; 
             justify-content: space-between; 
@@ -534,178 +732,183 @@
             top: 0; 
             z-index: 10; 
         }
-        
+
         .side-panel-title { 
             font-size: 1.3em; 
-            font-weight: bold; 
+            font-weight: 600; 
             color: var(--text-primary);
         }
-        
+
         .side-panel-close { 
             cursor: pointer; 
             font-size: 1.8em; 
             color: var(--text-secondary);
             font-weight: bold; 
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
         }
-        
+
         .side-panel-close:hover { 
             color: var(--text-primary);
+            background: var(--bg-secondary);
         }
-        
+
         .side-panel-content { 
             padding: 20px; 
         }
-        
+
         .drill-section { 
             margin-bottom: 30px; 
         }
-        
+
         .drill-section h3 { 
             color: var(--text-primary);
             margin-bottom: 15px; 
             font-size: 1.1em; 
-            border-bottom: 2px solid var(--bg-border);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
             padding-bottom: 8px; 
         }
-        
+
         .drill-stats { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
             gap: 15px; 
             margin-bottom: 20px; 
         }
-        
+
         .drill-stat-item { 
             background: var(--bg-tertiary);
-            padding: 12px; 
+            padding: 16px; 
             border-radius: 8px; 
             text-align: center;
-            border: 1px solid var(--bg-border);
+            border: 1px solid var(--border-color);
         }
-        
+
         .drill-stat-value { 
-            font-size: 1.2em; 
-            font-weight: bold; 
+            font-size: 1.4em; 
+            font-weight: 600; 
             color: var(--text-primary);
+            margin-bottom: 4px;
         }
-        
+
         .drill-stat-label { 
-            font-size: 0.9em; 
+            font-size: 0.85em; 
             color: var(--text-secondary);
-            margin-top: 4px; 
         }
-        
+
         .drill-insights { 
             background: var(--bg-tertiary);
-            border-left: 4px solid var(--color-positive);
-            padding: 15px; 
-            border-radius: 6px; 
+            border-left: 4px solid var(--positive-color);
+            padding: 16px; 
+            border-radius: 8px; 
             margin-top: 15px; 
+            border: 1px solid var(--border-color);
         }
-        
+
         .drill-insights h4 { 
             color: var(--text-primary);
             margin-bottom: 10px; 
             font-size: 1em; 
+            font-weight: 600;
         }
-        
+
         .drill-insights ul { 
             margin-left: 20px; 
         }
-        
+
         .drill-insights li { 
             margin-bottom: 5px; 
             color: var(--text-secondary);
+            line-height: 1.5;
         }
-        
-        .metric-value { 
-            font-size: 2em; 
-            font-weight: bold; 
-            margin-bottom: 10px; 
+
+        /* Canvas要素のスタイル */
+        canvas {
+            max-width: 100%;
+            height: auto !important;
         }
-        
-        .positive { 
-            color: var(--color-positive);
+
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 16px;
+            }
+
+            .style-performance-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .analysis-section {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .theme-toggle {
+                top: 10px;
+                right: 10px;
+                padding: 6px 10px;
+            }
+
+            .upload-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .side-panel {
+                width: 100vw;
+                right: -100vw;
+            }
         }
-        
-        .negative { 
-            color: var(--color-negative);
+
+        /* スクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
-        
-        .neutral { 
-            color: var(--color-neutral);
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
         }
-        
-        .chart-container { 
-            background: var(--bg-secondary);
-            border-radius: 15px; 
-            padding: 25px; 
-            margin-top: 20px; 
-            border: 1px solid var(--bg-border);
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
         }
-        
-        .chart-container h3 {
-            color: var(--text-primary);
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .error-message { 
-            background: rgba(255, 50, 0, 0.1);
-            color: var(--color-negative);
-            padding: 15px; 
-            border-radius: 5px; 
-            margin-top: 20px; 
-            display: none;
-            border: 1px solid rgba(255, 50, 0, 0.3);
-        }
-        
-        .loading { 
-            display: none; 
-            text-align: center; 
-            padding: 20px; 
-            color: var(--color-positive);
-        }
-        
-        .spinner { 
-            border: 3px solid var(--bg-border);
-            border-top: 3px solid var(--color-positive);
-            border-radius: 50%; 
-            width: 40px; 
-            height: 40px; 
-            animation: spin 1s linear infinite; 
-            margin: 0 auto; 
-        }
-        
-        @keyframes spin { 
-            0% { transform: rotate(0deg); } 
-            100% { transform: rotate(360deg); } 
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
         }
     </style>
 </head>
-<body>
-    <!-- テーマ切り替えボタン -->
-    <button class="theme-toggle" onclick="toggleTheme()">
-        <span class="theme-toggle-icon" id="themeIcon">☀️</span>
-        <span class="theme-toggle-text" id="themeText">ライトモード</span>
-    </button>
-    
+<body class="dark-mode">
     <div class="container">
         <header>
             <h1>FX取引履歴分析ツール</h1>
             <p>MT4/MT5の取引履歴(HTML)をアップロードして、保有時間を詳細分析します</p>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <svg viewBox="0 0 24 24" id="theme-icon">
+                    <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
+                <span class="theme-toggle-text">ライトモード</span>
+            </button>
         </header>
 
         <div class="upload-section">
             <h2>取引履歴ファイルをアップロード</h2>
-            <div style="display: flex; align-items: center;">
+            <div class="upload-controls">
                 <div class="file-input-wrapper">
                     <input type="file" id="fileInput" accept=".html,.htm" />
                     <label for="fileInput">ファイルを選択</label>
                 </div>
-                <button class="demo-button" onclick="loadDemoData()">デモデータで試す</button>
             </div>
             <div id="fileName"></div>
             <div id="fileInfo" class="file-info" style="display: none;">
@@ -718,6 +921,13 @@
                 <p>分析中...</p>
             </div>
             <div class="error-message" id="errorMessage"></div>
+        </div>
+
+        <div class="demo-controls">
+            <h3>デモデータでテスト</h3>
+            <button onclick="generateGoodPerformanceData()">優秀なトレーダーデータ</button>
+            <button onclick="generateAveragePerformanceData()">平均的なトレーダーデータ</button>
+            <button onclick="generatePoorPerformanceData()">改善が必要なトレーダーデータ</button>
         </div>
 
         <!-- 保有時間タイプフィルター -->
@@ -901,79 +1111,12 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script>
-        // テーマの初期化と切り替え
-        function initTheme() {
-            // localStorageが使えない環境でも動作するように
-            try {
-                const savedTheme = localStorage.getItem('theme') || 'dark';
-                document.documentElement.setAttribute('data-theme', savedTheme);
-                updateThemeButton(savedTheme);
-                updateChartDefaults(savedTheme);
-            } catch (e) {
-                // localStorageが使えない場合はダークモードをデフォルトに
-                document.documentElement.setAttribute('data-theme', 'dark');
-                updateThemeButton('dark');
-                updateChartDefaults('dark');
-            }
-        }
-        
-        window.toggleTheme = function() {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            document.documentElement.setAttribute('data-theme', newTheme);
-            
-            try {
-                localStorage.setItem('theme', newTheme);
-            } catch (e) {
-                // localStorageが使えない場合は何もしない
-            }
-            
-            updateThemeButton(newTheme);
-            updateChartDefaults(newTheme);
-            
-            // 既存のチャートを再描画
-            if (filteredTrades && filteredTrades.length > 0) {
-                renderAnalysis(filteredTrades);
-                updateTradingStyleCounts();
-            }
-        }
-        
-        function updateThemeButton(theme) {
-            const icon = document.getElementById('themeIcon');
-            const text = document.getElementById('themeText');
-            
-            if (theme === 'dark') {
-                icon.textContent = '☀️';
-                text.textContent = 'ライトモード';
-            } else {
-                icon.textContent = '🌙';
-                text.textContent = 'ダークモード';
-            }
-        }
-        
-        function updateChartDefaults(theme) {
-            if (theme === 'dark') {
-                Chart.defaults.color = '#ffffff';
-                Chart.defaults.borderColor = '#373737';
-                Chart.defaults.plugins.legend.labels.color = '#ffffff';
-            } else {
-                Chart.defaults.color = '#333333';
-                Chart.defaults.borderColor = '#ebebeb';
-                Chart.defaults.plugins.legend.labels.color = '#333333';
-            }
-        }
-        
-        // ページ読み込み時にテーマを初期化
-        document.addEventListener('DOMContentLoaded', initTheme);
-        
-        // --- グローバル変数 ---
+        // グローバル変数
         let allTrades = [];
         let filteredTrades = [];
         let activeCharts = [];
-        let currentTradingStyle = 'all';
 
-        // --- DOM要素の取得 ---
+        // DOM要素の取得
         const fileInput = document.getElementById('fileInput');
         const fileNameEl = document.getElementById('fileName');
         const fileInfoEl = document.getElementById('fileInfo');
@@ -997,14 +1140,9 @@
         const sidePanelTitle = document.getElementById('sidePanelTitle');
         const sidePanelContent = document.getElementById('sidePanelContent');
         const sidePanelClose = document.getElementById('sidePanelClose');
-        
-        // オーバーレイ要素を動的に作成
-        const sidePanelOverlay = document.createElement('div');
-        sidePanelOverlay.className = 'side-panel-overlay';
-        sidePanelOverlay.id = 'sidePanelOverlay';
-        document.body.appendChild(sidePanelOverlay);
+        const sidePanelOverlay = document.getElementById('sidePanelOverlay');
 
-        // --- ヘルプ説明文 ---
+        // ヘルプ説明文
         const helpTexts = {
             '総取引数': '分析対象期間内に実行された売買取引の総回数です。',
             '勝率': '利益を出したトレードの割合です。50%以上が目安です。',
@@ -1018,7 +1156,61 @@
             '保有時間分布': '保有時間別の取引回数を表示します。勝ち負け別に色分けされています。'
         };
 
-        // --- イベントリスナー ---
+        // テーマ管理
+        function initTheme() {
+            document.body.classList.add('dark-mode');
+            updateThemeButton('dark');
+            updateChartDefaults('dark');
+        }
+        
+        window.toggleTheme = function() {
+            const isDark = document.body.classList.contains('dark-mode');
+            const newTheme = isDark ? 'light' : 'dark';
+            
+            if (newTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+            
+            updateThemeButton(newTheme);
+            updateChartDefaults(newTheme);
+            
+            if (filteredTrades && filteredTrades.length > 0) {
+                renderAnalysis(filteredTrades);
+                updateTradingStyleCounts();
+            }
+        };
+        
+        function updateThemeButton(theme) {
+            const icon = document.getElementById('theme-icon');
+            const text = document.querySelector('.theme-toggle-text');
+            
+            if (theme === 'dark') {
+                icon.innerHTML = '<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>';
+                text.textContent = 'ライトモード';
+            } else {
+                icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+                text.textContent = 'ダークモード';
+            }
+        }
+        
+        function updateChartDefaults(theme) {
+            if (typeof Chart !== 'undefined') {
+                if (theme === 'dark') {
+                    Chart.defaults.color = '#aaa';
+                    Chart.defaults.borderColor = '#373737';
+                    Chart.defaults.plugins.legend.labels.color = '#aaa';
+                } else {
+                    Chart.defaults.color = '#666';
+                    Chart.defaults.borderColor = '#ebebeb';
+                    Chart.defaults.plugins.legend.labels.color = '#666';
+                }
+            }
+        }
+
+        // イベントリスナー
+        document.addEventListener('DOMContentLoaded', initTheme);
         fileInput.addEventListener('change', handleFileUpload);
         symbolFilterEl.addEventListener('change', applyFilters);
         positionFilterEl.addEventListener('change', applyFilters);
@@ -1030,60 +1222,157 @@
             if (e.target === popupOverlay) closePopup();
         });
         sidePanelClose.addEventListener('click', closeSidePanel);
-        
-        // サイドパネルオーバーレイクリックで閉じる
-        sidePanelOverlay.addEventListener('click', function() {
-            console.log('Overlay clicked');
-            closeSidePanel();
-        });
-        
-        // グローバル関数の定義
-        window.loadDemoData = function() {
-            console.log('Loading demo data...');
-            setLoading(true);
-            
-            // デモデータを生成
-            const demoTrades = generateDemoTrades();
-            allTrades = demoTrades;
-            filteredTrades = [...allTrades];
-            
-            fileNameEl.textContent = 'デモデータを使用中';
-            displayFileInfo(allTrades);
-            populateFilters();
-            updateTradingStyleCounts();
-            
-            // フィルターセクションを確実に表示
-            const filterSection = document.getElementById('filterSection');
-            if (filterSection) {
-                filterSection.style.display = 'block';
-                console.log('Filter section displayed');
-            }
-            
-            // トレードスタイルセクションも表示
-            tradingStyleSectionEl.style.display = 'block';
-            
-            renderAnalysis(filteredTrades);
-            setLoading(false);
-        };
-        
+        sidePanelOverlay.addEventListener('click', closeSidePanel);
+
+        // グローバル関数
         window.showHelp = function(title) {
             popupTitle.textContent = title;
             popupBody.textContent = helpTexts[title] || '説明が見つかりません。';
             popupOverlay.style.display = 'flex';
         };
-        
-        // トレードスタイルを判定する関数（改良版の時間区分）
+
+        // デモデータ生成関数
+        window.generateGoodPerformanceData = function() {
+            console.log('Loading good performance demo data...');
+            setLoading(true);
+            
+            const trades = [];
+            const symbols = ['USDJPY', 'EURJPY', 'GBPJPY'];
+            const baseDate = new Date(2024, 0, 1);
+            
+            for (let i = 0; i < 150; i++) {
+                const openTime = new Date(baseDate.getTime() + Math.random() * 90 * 24 * 60 * 60 * 1000);
+                const duration = Math.random() * 43200000; // 最大12時間
+                const closeTime = new Date(openTime.getTime() + duration);
+                const isWin = Math.random() > 0.35; // 勝率65%
+                const profit = isWin ? 
+                    (Math.random() * 25000 + 8000) : // 勝ち: 8,000-33,000円
+                    -(Math.random() * 12000 + 3000);  // 負け: -3,000--15,000円
+                
+                trades.push({
+                    ticket: `#${200000 + i}`,
+                    openTime: openTime,
+                    closeTime: closeTime,
+                    type: Math.random() > 0.5 ? 'buy' : 'sell',
+                    size: 0.1,
+                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
+                    profit: profit,
+                    isWin: isWin,
+                    duration: duration
+                });
+            }
+            
+            allTrades = trades.sort((a, b) => a.openTime.getTime() - b.openTime.getTime());
+            filteredTrades = [...allTrades];
+            
+            fileNameEl.textContent = 'デモデータ（優秀なトレーダー）を使用中';
+            displayFileInfo(allTrades);
+            populateFilters();
+            updateTradingStyleCounts();
+            filterSectionEl.style.display = 'block';
+            tradingStyleSectionEl.style.display = 'block';
+            renderAnalysis(filteredTrades);
+            setLoading(false);
+        };
+
+        window.generateAveragePerformanceData = function() {
+            console.log('Loading average performance demo data...');
+            setLoading(true);
+            
+            const trades = [];
+            const symbols = ['USDJPY', 'EURUSD', 'GBPUSD', 'AUDUSD'];
+            const baseDate = new Date(2024, 0, 1);
+            
+            for (let i = 0; i < 100; i++) {
+                const openTime = new Date(baseDate.getTime() + Math.random() * 90 * 24 * 60 * 60 * 1000);
+                const duration = Math.random() * 86400000; // 最大24時間
+                const closeTime = new Date(openTime.getTime() + duration);
+                const isWin = Math.random() > 0.45; // 勝率55%
+                const profit = isWin ? 
+                    (Math.random() * 18000 + 5000) : // 勝ち: 5,000-23,000円
+                    -(Math.random() * 15000 + 4000);  // 負け: -4,000--19,000円
+                
+                trades.push({
+                    ticket: `#${300000 + i}`,
+                    openTime: openTime,
+                    closeTime: closeTime,
+                    type: Math.random() > 0.5 ? 'buy' : 'sell',
+                    size: 0.1,
+                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
+                    profit: profit,
+                    isWin: isWin,
+                    duration: duration
+                });
+            }
+            
+            allTrades = trades.sort((a, b) => a.openTime.getTime() - b.openTime.getTime());
+            filteredTrades = [...allTrades];
+            
+            fileNameEl.textContent = 'デモデータ（平均的なトレーダー）を使用中';
+            displayFileInfo(allTrades);
+            populateFilters();
+            updateTradingStyleCounts();
+            filterSectionEl.style.display = 'block';
+            tradingStyleSectionEl.style.display = 'block';
+            renderAnalysis(filteredTrades);
+            setLoading(false);
+        };
+
+        window.generatePoorPerformanceData = function() {
+            console.log('Loading poor performance demo data...');
+            setLoading(true);
+            
+            const trades = [];
+            const symbols = ['USDJPY', 'EURUSD', 'GBPUSD', 'AUDUSD', 'EURJPY'];
+            const baseDate = new Date(2024, 0, 1);
+            
+            for (let i = 0; i < 80; i++) {
+                const openTime = new Date(baseDate.getTime() + Math.random() * 90 * 24 * 60 * 60 * 1000);
+                const duration = Math.random() * 172800000; // 最大48時間
+                const closeTime = new Date(openTime.getTime() + duration);
+                const isWin = Math.random() > 0.65; // 勝率35%
+                const profit = isWin ? 
+                    (Math.random() * 15000 + 3000) : // 勝ち: 3,000-18,000円
+                    -(Math.random() * 25000 + 8000);  // 負け: -8,000--33,000円
+                
+                trades.push({
+                    ticket: `#${400000 + i}`,
+                    openTime: openTime,
+                    closeTime: closeTime,
+                    type: Math.random() > 0.5 ? 'buy' : 'sell',
+                    size: 0.1,
+                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
+                    profit: profit,
+                    isWin: isWin,
+                    duration: duration
+                });
+            }
+            
+            allTrades = trades.sort((a, b) => a.openTime.getTime() - b.openTime.getTime());
+            filteredTrades = [...allTrades];
+            
+            fileNameEl.textContent = 'デモデータ（改善が必要なトレーダー）を使用中';
+            displayFileInfo(allTrades);
+            populateFilters();
+            updateTradingStyleCounts();
+            filterSectionEl.style.display = 'block';
+            tradingStyleSectionEl.style.display = 'block';
+            renderAnalysis(filteredTrades);
+            setLoading(false);
+        };
+
+        // トレードスタイル判定
         function getTradingStyle(duration) {
             const minutes = duration / (1000 * 60);
             const hours = duration / (1000 * 60 * 60);
             
-            if (minutes <= 30) return 'scalping';      // 30分以内
-            if (hours <= 4) return 'day';              // 30分〜4時間
-            if (hours <= 24) return 'swing';           // 4時間〜1日
-            return 'position';                          // 1日以上
+            if (minutes <= 30) return 'scalping';
+            if (hours <= 4) return 'day';
+            if (hours <= 24) return 'swing';
+            return 'position';
         }
-        
-        // トレードスタイル別のカウントを更新
+
+        // トレードスタイル分析
         function updateTradingStyleCounts() {
             const styleCounts = {
                 all: allTrades.length,
@@ -1112,14 +1401,10 @@
                 styleStats[style].profit += trade.profit;
             });
             
-            // パフォーマンスカードを更新
             updatePerformanceCards(styleCounts, styleStats);
-            
-            // 複合チャートを作成
             createStyleComparisonChart(styleCounts, styleStats);
         }
-        
-        // パフォーマンスカードを更新
+
         function updatePerformanceCards(styleCounts, styleStats) {
             const styles = ['scalping', 'day', 'swing', 'position'];
             
@@ -1127,68 +1412,71 @@
                 const count = styleCounts[style];
                 const stats = styleStats[style];
                 
-                // 取引数
                 const countEl = document.getElementById(`count${style.charAt(0).toUpperCase() + style.slice(1)}`);
-                countEl.textContent = `${count}回`;
-                countEl.className = 'metric-value neutral';
-                
-                // 勝率
                 const winRateEl = document.getElementById(`winRate${style.charAt(0).toUpperCase() + style.slice(1)}`);
-                if (count > 0) {
-                    const winRate = (stats.wins / count * 100).toFixed(1);
-                    winRateEl.textContent = `${winRate}%`;
-                    winRateEl.className = `metric-value ${winRate >= 55 ? 'positive' : winRate >= 45 ? 'neutral' : 'negative'}`;
-                } else {
-                    winRateEl.textContent = '-';
-                    winRateEl.className = 'metric-value neutral';
-                }
-                
-                // 期待値（EV）
                 const evEl = document.getElementById(`ev${style.charAt(0).toUpperCase() + style.slice(1)}`);
-                if (count > 0) {
-                    const ev = stats.profit / count;
-                    evEl.textContent = `¥${Math.round(ev).toLocaleString()}`;
-                    evEl.className = `metric-value ${ev > 0 ? 'positive' : 'negative'}`;
-                } else {
-                    evEl.textContent = '-';
-                    evEl.className = 'metric-value neutral';
+                const recEl = document.getElementById(`rec${style.charAt(0).toUpperCase() + style.slice(1)}`);
+                
+                if (countEl) {
+                    countEl.textContent = `${count}回`;
+                    countEl.className = 'metric-value neutral';
                 }
                 
-                // 推奨事項
-                const recEl = document.getElementById(`rec${style.charAt(0).toUpperCase() + style.slice(1)}`);
-                if (count > 0) {
-                    const winRate = stats.wins / count;
-                    const ev = stats.profit / count;
-                    
-                    if (ev > 1000 && winRate >= 0.6) {
-                        recEl.textContent = '✨ 優秀！このスタイルが最適です';
-                        recEl.className = 'style-perf-recommendation excellent';
-                    } else if (ev > 0 && winRate >= 0.5) {
-                        recEl.textContent = '📈 良好。継続して改善しましょう';
-                        recEl.className = 'style-perf-recommendation';
-                    } else if (ev < 0 && count < 10) {
-                        recEl.textContent = '⚠️ サンプル数が少ないため評価困難';
-                        recEl.className = 'style-perf-recommendation warning';
-                    } else if (ev < 0) {
-                        recEl.textContent = '🔴 改善が必要。ルールの見直しを';
-                        recEl.className = 'style-perf-recommendation danger';
+                if (winRateEl) {
+                    if (count > 0) {
+                        const winRate = (stats.wins / count * 100).toFixed(1);
+                        winRateEl.textContent = `${winRate}%`;
+                        winRateEl.className = `metric-value ${winRate >= 55 ? 'positive' : winRate >= 45 ? 'neutral' : 'negative'}`;
                     } else {
-                        recEl.textContent = '📊 さらなる検証が必要です';
+                        winRateEl.textContent = '-';
+                        winRateEl.className = 'metric-value neutral';
+                    }
+                }
+                
+                if (evEl) {
+                    if (count > 0) {
+                        const ev = stats.profit / count;
+                        evEl.textContent = `¥${Math.round(ev).toLocaleString()}`;
+                        evEl.className = `metric-value ${ev > 0 ? 'positive' : 'negative'}`;
+                    } else {
+                        evEl.textContent = '-';
+                        evEl.className = 'metric-value neutral';
+                    }
+                }
+                
+                if (recEl) {
+                    if (count > 0) {
+                        const winRate = stats.wins / count;
+                        const ev = stats.profit / count;
+                        
+                        if (ev > 1000 && winRate >= 0.6) {
+                            recEl.textContent = '優秀！このスタイルが最適です';
+                            recEl.className = 'style-perf-recommendation excellent';
+                        } else if (ev > 0 && winRate >= 0.5) {
+                            recEl.textContent = '良好。継続して改善しましょう';
+                            recEl.className = 'style-perf-recommendation';
+                        } else if (ev < 0 && count < 10) {
+                            recEl.textContent = 'サンプル数が少ないため評価困難';
+                            recEl.className = 'style-perf-recommendation warning';
+                        } else if (ev < 0) {
+                            recEl.textContent = '改善が必要。ルールの見直しを';
+                            recEl.className = 'style-perf-recommendation danger';
+                        } else {
+                            recEl.textContent = 'さらなる検証が必要です';
+                            recEl.className = 'style-perf-recommendation';
+                        }
+                    } else {
+                        recEl.textContent = 'データなし';
                         recEl.className = 'style-perf-recommendation';
                     }
-                } else {
-                    recEl.textContent = 'データなし';
-                    recEl.className = 'style-perf-recommendation';
                 }
             });
         }
-        
-        // 複合チャート（積み上げ棒グラフ＋勝率折れ線）を作成
+
         function createStyleComparisonChart(styleCounts, styleStats) {
             const ctx = document.getElementById('styleDistributionChart');
             if (!ctx) return;
             
-            // 既存のチャートがあれば破棄
             const existingChart = Chart.getChart(ctx);
             if (existingChart) {
                 existingChart.destroy();
@@ -1203,10 +1491,8 @@
                 const total = styleStats[style].wins + styleStats[style].losses;
                 return total > 0 ? (styleStats[style].wins / total * 100) : 0;
             });
-            const evData = styles.map(style => {
-                const total = styleCounts[style];
-                return total > 0 ? Math.round(styleStats[style].profit / total) : 0;
-            });
+            
+            const isDark = document.body.classList.contains('dark-mode');
             
             new Chart(ctx, {
                 type: 'bar',
@@ -1216,16 +1502,16 @@
                         {
                             label: '勝ちトレード',
                             data: winData,
-                            backgroundColor: 'rgba(0, 200, 255, 0.8)',
-                            borderColor: '#00c8ff',
+                            backgroundColor: isDark ? 'rgba(0, 200, 255, 0.8)' : 'rgba(0, 126, 255, 0.8)',
+                            borderColor: isDark ? '#00c8ff' : '#007eff',
                             borderWidth: 1,
                             stack: 'Stack 0'
                         },
                         {
                             label: '負けトレード',
                             data: lossData,
-                            backgroundColor: 'rgba(255, 50, 0, 0.8)',
-                            borderColor: '#ff3200',
+                            backgroundColor: isDark ? 'rgba(255, 50, 0, 0.8)' : 'rgba(255, 40, 0, 0.8)',
+                            borderColor: isDark ? '#ff3200' : '#ff2800',
                             borderWidth: 1,
                             stack: 'Stack 0'
                         },
@@ -1233,11 +1519,11 @@
                             label: '勝率 (%)',
                             data: winRates,
                             type: 'line',
-                            borderColor: '#00c8ff',
-                            backgroundColor: 'rgba(0, 200, 255, 0.1)',
+                            borderColor: isDark ? '#00c8ff' : '#007eff',
+                            backgroundColor: isDark ? 'rgba(0, 200, 255, 0.1)' : 'rgba(0, 126, 255, 0.1)',
                             borderWidth: 3,
                             pointRadius: 6,
-                            pointBackgroundColor: '#00c8ff',
+                            pointBackgroundColor: isDark ? '#00c8ff' : '#007eff',
                             yAxisID: 'y1',
                             tension: 0.3
                         }
@@ -1254,145 +1540,57 @@
                         title: {
                             display: true,
                             text: 'トレードスタイル別パフォーマンス分析',
-                            font: {
-                                size: 14,
-                                weight: 'bold'
-                            },
-                            color: '#e0e0e0',
-                            padding: {
-                                bottom: 20
-                            }
+                            font: { size: 14, weight: 'bold' },
+                            color: isDark ? '#e0e0e0' : '#333',
+                            padding: { bottom: 20 }
                         },
                         legend: {
                             position: 'bottom',
                             labels: {
                                 padding: 15,
-                                font: {
-                                    size: 11
-                                },
-                                color: '#e0e0e0'
+                                font: { size: 11 },
+                                color: isDark ? '#aaa' : '#666'
                             }
                         },
                         tooltip: {
-                            backgroundColor: '#181818',
-                            borderColor: '#373737',
+                            backgroundColor: isDark ? '#181818' : '#fafafa',
+                            borderColor: isDark ? '#373737' : '#ebebeb',
                             borderWidth: 1,
-                            titleColor: '#e0e0e0',
-                            bodyColor: '#aaa',
-                            callbacks: {
-                                afterLabel: function(context) {
-                                    if (context.datasetIndex < 2) {
-                                        const index = context.dataIndex;
-                                        const ev = evData[index];
-                                        return `期待値: ¥${ev.toLocaleString()}`;
-                                    }
-                                    return '';
-                                }
-                            }
+                            titleColor: isDark ? '#e0e0e0' : '#333',
+                            bodyColor: isDark ? '#aaa' : '#666'
                         }
                     },
                     scales: {
                         x: {
-                            title: {
-                                display: true,
-                                text: 'トレードスタイル',
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
-                            },
-                            grid: {
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#373737' 
-                                    : '#ebebeb'
-                            },
-                            ticks: {
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
-                            }
+                            title: { display: true, text: 'トレードスタイル', color: isDark ? '#aaa' : '#666' },
+                            grid: { color: isDark ? '#373737' : '#ebebeb' },
+                            ticks: { color: isDark ? '#aaa' : '#666' }
                         },
                         y: {
                             type: 'linear',
                             display: true,
                             position: 'left',
-                            title: {
-                                display: true,
-                                text: '取引回数',
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
-                            },
+                            title: { display: true, text: '取引回数', color: isDark ? '#aaa' : '#666' },
                             beginAtZero: true,
-                            grid: {
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#373737' 
-                                    : '#ebebeb'
-                            },
-                            ticks: {
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
-                            }
+                            grid: { color: isDark ? '#373737' : '#ebebeb' },
+                            ticks: { color: isDark ? '#aaa' : '#666' }
                         },
                         y1: {
                             type: 'linear',
                             display: true,
                             position: 'right',
-                            title: {
-                                display: true,
-                                text: '勝率 (%)',
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
-                            },
+                            title: { display: true, text: '勝率 (%)', color: isDark ? '#aaa' : '#666' },
                             min: 0,
                             max: 100,
-                            grid: {
-                                drawOnChartArea: false
-                            },
-                            ticks: {
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
-                            }
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: isDark ? '#aaa' : '#666' }
                         }
                     }
                 }
             });
         }
-        
-        function generateDemoTrades() {
-            const trades = [];
-            const symbols = ['USDJPY', 'EURUSD', 'GBPUSD', 'AUDUSD', 'EURJPY'];
-            const baseDate = new Date(2024, 0, 1); // 2024年1月1日から
-            
-            for (let i = 0; i < 100; i++) {
-                const openTime = new Date(baseDate.getTime() + Math.random() * 90 * 24 * 60 * 60 * 1000); // 90日間のランダム
-                const duration = Math.random() * 48 * 60 * 60 * 1000; // 最大48時間
-                const closeTime = new Date(openTime.getTime() + duration);
-                const isWin = Math.random() > 0.45; // 勝率55%
-                const profit = isWin ? 
-                    (Math.random() * 50000 + 5000) : // 勝ち: 5,000-55,000円
-                    -(Math.random() * 30000 + 5000);  // 負け: -5,000--35,000円
-                
-                trades.push({
-                    ticket: `#${100000 + i}`,
-                    openTime: openTime,
-                    closeTime: closeTime,
-                    type: Math.random() > 0.5 ? 'buy' : 'sell',
-                    size: 0.1,
-                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
-                    profit: profit,
-                    isWin: isWin,
-                    duration: duration
-                });
-            }
-            
-            return trades.sort((a, b) => a.openTime.getTime() - b.openTime.getTime());
-        }
-        
+
         function populateFilters() {
-            // 通貨ペアフィルター
             const symbols = [...new Set(allTrades.map(t => t.symbol))];
             symbolFilterEl.innerHTML = '<option value="all">すべての通貨ペア</option>';
             symbols.sort().forEach(symbol => {
@@ -1402,38 +1600,27 @@
                 symbolFilterEl.appendChild(option);
             });
         }
-        
+
         function applyFilters() {
-            if (!allTrades || allTrades.length === 0) {
-                console.log('No trades to filter');
-                return;
-            }
+            if (!allTrades || allTrades.length === 0) return;
             
             filteredTrades = [...allTrades];
-            console.log(`Starting with ${filteredTrades.length} trades`);
             
-            // 通貨ペアフィルター
             const symbol = symbolFilterEl.value;
             if (symbol !== 'all') {
                 filteredTrades = filteredTrades.filter(t => t.symbol === symbol);
-                console.log(`After symbol filter: ${filteredTrades.length} trades`);
             }
             
-            // ポジションフィルター
             const position = positionFilterEl.value;
             if (position !== 'all') {
                 filteredTrades = filteredTrades.filter(t => t.type === position);
-                console.log(`After position filter: ${filteredTrades.length} trades`);
             }
             
-            // 曜日フィルター
             const weekday = weekdayFilterEl.value;
             if (weekday !== 'all') {
                 filteredTrades = filteredTrades.filter(t => t.openTime.getDay() === parseInt(weekday));
-                console.log(`After weekday filter: ${filteredTrades.length} trades`);
             }
             
-            // 時間帯フィルター
             const timeRange = timeFilterEl.value;
             if (timeRange !== 'all') {
                 filteredTrades = filteredTrades.filter(t => {
@@ -1446,23 +1633,18 @@
                         default: return true;
                     }
                 });
-                console.log(`After time filter: ${filteredTrades.length} trades`);
             }
             
-            // 勝敗フィルター
             const result = resultFilterEl.value;
             if (result === 'win') {
                 filteredTrades = filteredTrades.filter(t => t.isWin);
-                console.log(`After win filter: ${filteredTrades.length} trades`);
             } else if (result === 'loss') {
                 filteredTrades = filteredTrades.filter(t => !t.isWin);
-                console.log(`After loss filter: ${filteredTrades.length} trades`);
             }
             
             renderAnalysis(filteredTrades);
         }
-        
-        // --- メインロジック ---
+
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1517,7 +1699,6 @@
             let headerMapping = {};
             let dataStartIndex = -1;
             
-            // ヘッダー行を探す
             for (let i = 0; i < Math.min(10, rows.length); i++) {
                 const cells = rows[i].querySelectorAll('td, th');
                 if (cells.length < 10) continue;
@@ -1545,7 +1726,6 @@
             
             if (dataStartIndex === -1) return [];
             
-            // データ行を解析
             for (let i = dataStartIndex; i < rows.length; i++) {
                 const cells = rows[i].querySelectorAll('td');
                 if (cells.length < 10) continue;
@@ -1583,7 +1763,7 @@
             
             return parsedTrades;
         }
-        
+
         function parseDateTime(dateStr) {
             if (!dateStr) return null;
             const match = dateStr.match(/(\d{4})[./](\d{2})[./](\d{2})\s+(\d{2}):(\d{2})/);
@@ -1611,18 +1791,16 @@
         }
 
         function renderAnalysis(trades) {
-            resetAnalysisView(true); // フィルターは維持
+            resetAnalysisView(true);
             
             if (!trades || trades.length === 0) {
                 showError("選択された条件に一致する取引データがありません。");
                 return;
             }
 
-            console.log(`Rendering analysis for ${trades.length} trades`);
             const stats = calculateStatistics(trades);
             
             analysisRootEl.innerHTML = `
-                <!-- 保有時間メトリクス -->
                 <div class="analysis-section">
                     <div class="metric-card">
                         <div class="metric-card-header">
@@ -1668,23 +1846,19 @@
                     </div>
                 </div>
                 
-                <!-- 保有時間分布チャート -->
                 <div class="chart-container">
                     <h3>保有時間分布<span class="help-icon" onclick="showHelp('保有時間分布')">?</span></h3>
                     <canvas id="durationChart"></canvas>
                 </div>
             `;
             
-            // チャート作成
             createDurationChart(trades);
         }
 
         function calculateStatistics(trades) {
             const winTrades = trades.filter(t => t.isWin);
             const lossTrades = trades.filter(t => !t.isWin);
-            const totalProfit = trades.reduce((sum, t) => sum + t.profit, 0);
             
-            // 保有時間の統計計算
             const winDurations = winTrades.map(t => t.duration);
             const lossDurations = lossTrades.map(t => t.duration);
             
@@ -1693,22 +1867,14 @@
             const avgLossDuration = lossDurations.length > 0 ? 
                 lossDurations.reduce((sum, d) => sum + d, 0) / lossDurations.length : 0;
             
-            const maxWinDuration = winDurations.length > 0 ? Math.max(...winDurations) : 0;
-            const minWinDuration = winDurations.length > 0 ? Math.min(...winDurations) : 0;
-            const maxLossDuration = lossDurations.length > 0 ? Math.max(...lossDurations) : 0;
-            const minLossDuration = lossDurations.length > 0 ? Math.min(...lossDurations) : 0;
-            
             return {
                 totalTrades: trades.length,
-                winRatePercent: trades.length > 0 ? 
-                    (winTrades.length / trades.length * 100).toFixed(1) : "0.0",
-                totalProfit,
                 avgWinDuration,
                 avgLossDuration,
-                maxWinDuration,
-                minWinDuration,
-                maxLossDuration,
-                minLossDuration,
+                maxWinDuration: winDurations.length > 0 ? Math.max(...winDurations) : 0,
+                minWinDuration: winDurations.length > 0 ? Math.min(...winDurations) : 0,
+                maxLossDuration: lossDurations.length > 0 ? Math.max(...lossDurations) : 0,
+                minLossDuration: lossDurations.length > 0 ? Math.min(...lossDurations) : 0,
                 winTrades: winTrades.length,
                 lossTrades: lossTrades.length
             };
@@ -1736,11 +1902,9 @@
             const ctx = document.getElementById('durationChart');
             if (!ctx) return;
             
-            // 既存のチャートがあれば破棄
             activeCharts.forEach(chart => chart.destroy());
             activeCharts = [];
             
-            // 保有時間を範囲別に分類（分単位）
             const ranges = [
                 { min: 0, max: 30, label: '〜30分' },
                 { min: 30, max: 60, label: '30分〜1時間' },
@@ -1753,20 +1917,20 @@
             ];
 
             const winDistribution = ranges.map(range => {
-                const count = trades.filter(t => {
+                return trades.filter(t => {
                     const minutes = t.duration / 60000;
                     return t.isWin && minutes > range.min && minutes <= range.max;
                 }).length;
-                return count;
             });
             
             const lossDistribution = ranges.map(range => {
-                const count = trades.filter(t => {
+                return trades.filter(t => {
                     const minutes = t.duration / 60000;
                     return !t.isWin && minutes > range.min && minutes <= range.max;
                 }).length;
-                return count;
             });
+
+            const isDark = document.body.classList.contains('dark-mode');
 
             const chart = new Chart(ctx, {
                 type: 'bar',
@@ -1776,23 +1940,15 @@
                         {
                             label: '勝ちトレード',
                             data: winDistribution,
-                            backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                ? 'rgba(0, 200, 255, 0.8)' 
-                                : 'rgba(0, 126, 255, 0.8)',
-                            borderColor: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                ? '#00c8ff' 
-                                : '#007eff',
+                            backgroundColor: isDark ? 'rgba(0, 200, 255, 0.8)' : 'rgba(0, 126, 255, 0.8)',
+                            borderColor: isDark ? '#00c8ff' : '#007eff',
                             borderWidth: 1
                         },
                         {
                             label: '負けトレード',
                             data: lossDistribution,
-                            backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                ? 'rgba(255, 50, 0, 0.8)' 
-                                : 'rgba(255, 40, 0, 0.8)',
-                            borderColor: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                ? '#ff3200' 
-                                : '#ff2800',
+                            backgroundColor: isDark ? 'rgba(255, 50, 0, 0.8)' : 'rgba(255, 40, 0, 0.8)',
+                            borderColor: isDark ? '#ff3200' : '#ff2800',
                             borderWidth: 1
                         }
                     ]
@@ -1807,19 +1963,11 @@
                     },
                     plugins: {
                         tooltip: {
-                            backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                ? '#181818' 
-                                : '#fafafa',
-                            borderColor: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                ? '#373737' 
-                                : '#ebebeb',
+                            backgroundColor: isDark ? '#181818' : '#fafafa',
+                            borderColor: isDark ? '#373737' : '#ebebeb',
                             borderWidth: 1,
-                            titleColor: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                ? '#ffffff' 
-                                : '#333333',
-                            bodyColor: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                ? '#ffffff' 
-                                : '#333333',
+                            titleColor: isDark ? '#e0e0e0' : '#333',
+                            bodyColor: isDark ? '#aaa' : '#666',
                             callbacks: {
                                 afterLabel: function(context) {
                                     return 'クリックで詳細を表示';
@@ -1828,51 +1976,21 @@
                         },
                         legend: {
                             labels: {
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
+                                color: isDark ? '#aaa' : '#666'
                             }
                         }
                     },
                     scales: {
                         x: {
-                            title: { 
-                                display: true, 
-                                text: '保有時間',
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
-                            },
-                            grid: {
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#373737' 
-                                    : '#ebebeb'
-                            },
-                            ticks: {
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
-                            }
+                            title: { display: true, text: '保有時間', color: isDark ? '#aaa' : '#666' },
+                            grid: { color: isDark ? '#373737' : '#ebebeb' },
+                            ticks: { color: isDark ? '#aaa' : '#666' }
                         },
                         y: {
-                            title: { 
-                                display: true, 
-                                text: '取引回数',
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
-                            },
+                            title: { display: true, text: '取引回数', color: isDark ? '#aaa' : '#666' },
                             beginAtZero: true,
-                            grid: {
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#373737' 
-                                    : '#ebebeb'
-                            },
-                            ticks: {
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' 
-                                    ? '#ffffff' 
-                                    : '#333333'
-                            }
+                            grid: { color: isDark ? '#373737' : '#ebebeb' },
+                            ticks: { color: isDark ? '#aaa' : '#666' }
                         }
                     }
                 }
@@ -1882,7 +2000,6 @@
         }
 
         function showDurationDrillDown(range, trades) {
-            // フィルター適用後のデータから該当する保有時間範囲の取引を抽出
             const filteredRangeTrades = trades.filter(t => {
                 const minutes = t.duration / 60000;
                 return minutes > range.min && minutes <= range.max;
@@ -1964,12 +2081,12 @@
             `;
             
             sidePanel.classList.add('open');
+            sidePanelOverlay.classList.add('open');
         }
 
         function generateInsights(range, winRate, avgProfit, trades) {
             let insights = [];
             
-            // 保有時間カテゴリーの判定
             if (range.max <= 60) {
                 insights.push('<li>この時間帯はスキャルピング取引に該当します。</li>');
                 if (parseFloat(winRate) >= 60) {
@@ -1993,7 +2110,6 @@
                 }
             }
             
-            // リスクリワード比の評価
             const winTrades = trades.filter(t => t.isWin);
             const lossTrades = trades.filter(t => !t.isWin);
             if (winTrades.length > 0 && lossTrades.length > 0) {
@@ -2015,6 +2131,7 @@
 
         function closeSidePanel() {
             sidePanel.classList.remove('open');
+            sidePanelOverlay.classList.remove('open');
         }
 
         function resetAnalysisView(keepFilters = false) {
@@ -2025,7 +2142,6 @@
                 fileInfoEl.style.display = 'none';
                 filterSectionEl.style.display = 'none';
                 tradingStyleSectionEl.style.display = 'none';
-                currentTradingStyle = 'all';
             }
             
             activeCharts.forEach(chart => chart.destroy());
