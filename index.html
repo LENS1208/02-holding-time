@@ -892,8 +892,8 @@
 <body class="dark-mode">
     <div class="container">
         <header>
-            <h1>FX取引履歴分析ツール</h1>
-            <p>MT4/MT5の取引履歴(HTML)をアップロードして、保有時間を詳細分析します</p>
+            <h1>②ポジション保有時間指数</h1>
+            <p>ポジションをどのくらい保有し、効率的だったかを可視化＜UI開発＞</p>
             <button class="theme-toggle" onclick="toggleTheme()">
                 <svg viewBox="0 0 24 24" id="theme-icon">
                     <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
@@ -1111,6 +1111,139 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script>
+        // 統一デモデータ（他カテゴリーと共通）
+        const DEMO_TRADERS = {
+            excellent: {
+                name: "優秀なトレーダー",
+                description: "勝率75%、高い期待値を持つトレーダーのデータ",
+                kpi: {
+                    totalTrades: 150,
+                    winRate: 75.2,
+                    totalProfit: 320000,
+                    avgProfit: 12800,
+                    avgLoss: -4200,
+                    expectedValue: 2133,
+                    profitFactor: 3.05
+                },
+                delta: { pf: 0.25, ev: 1200, wr: -2.1 },
+                pareto: {
+                    top: [45000, 38000, 32000, 28000, 25000],
+                    bottom: [-8000, -6500, -5200, -4800, -4100]
+                },
+                streaks: {
+                    win: [8, 6, 5, 4, 3],
+                    lose: [2, 2, 1, 1, 1]
+                }
+            },
+            average: {
+                name: "平均的なトレーダー", 
+                description: "勝率55%、標準的なパフォーマンスのトレーダーデータ",
+                kpi: {
+                    totalTrades: 120,
+                    winRate: 55.8,
+                    totalProfit: 45000,
+                    avgProfit: 8500,
+                    avgLoss: -6200,
+                    expectedValue: 375,
+                    profitFactor: 1.18
+                },
+                delta: { pf: -0.15, ev: -800, wr: 1.8 },
+                pareto: {
+                    top: [25000, 18000, 15000, 12000, 10500],
+                    bottom: [-15000, -12000, -9500, -8200, -7100]
+                },
+                streaks: {
+                    win: [5, 4, 3, 3, 2],
+                    lose: [4, 3, 3, 2, 2]
+                }
+            },
+            poor: {
+                name: "改善が必要なトレーダー",
+                description: "勝率38%、損失超過のトレーダーデータ", 
+                kpi: {
+                    totalTrades: 95,
+                    winRate: 38.9,
+                    totalProfit: -85000,
+                    avgProfit: 6200,
+                    avgLoss: -8900,
+                    expectedValue: -895,
+                    profitFactor: 0.65
+                },
+                delta: { pf: -0.45, ev: -2100, wr: -8.3 },
+                pareto: {
+                    top: [18000, 12000, 9500, 8200, 7100],
+                    bottom: [-25000, -18000, -15000, -12000, -10500]
+                },
+                streaks: {
+                    win: [3, 2, 2, 1, 1],
+                    lose: [7, 5, 4, 4, 3]
+                }
+            }
+        };
+
+        // 派生値計算用のヘルパー関数
+        const CALCULATIONS = {
+            getWinTrades: (data) => Math.round(data.kpi.totalTrades * data.kpi.winRate / 100),
+            getLossTrades: (data) => Math.round(data.kpi.totalTrades * (100 - data.kpi.winRate) / 100),
+            getTotalWinAmount: (data) => Math.round(CALCULATIONS.getWinTrades(data) * data.kpi.avgProfit),
+            getTotalLossAmount: (data) => Math.round(Math.abs(CALCULATIONS.getLossTrades(data) * data.kpi.avgLoss))
+        };
+
+        // 保有時間ベースのトレードデータ生成
+        function generateHoldingTimeBasedTrades(traderData) {
+            const totalTrades = traderData.kpi.totalTrades;
+            const winRate = traderData.kpi.winRate / 100;
+            const trades = [];
+            const symbols = ['USDJPY', 'EURUSD', 'GBPUSD', 'EURJPY', 'GBPJPY'];
+            const baseDate = new Date(2024, 0, 1);
+            
+            for (let i = 0; i < totalTrades; i++) {
+                const openTime = new Date(baseDate.getTime() + Math.random() * 90 * 24 * 60 * 60 * 1000);
+                
+                // トレーダータイプに応じた保有時間生成
+                let duration;
+                if (traderData === DEMO_TRADERS.excellent) {
+                    // 優秀: 短時間取引が多い（スキャルピング〜デイトレード中心）
+                    duration = Math.random() < 0.6 ? 
+                        Math.random() * 14400000 : // 4時間以内が60%
+                        Math.random() * 86400000;   // 24時間以内が40%
+                } else if (traderData === DEMO_TRADERS.average) {
+                    // 平均: バランス良く
+                    duration = Math.random() * 172800000; // 48時間以内
+                } else {
+                    // 改善必要: 長時間保有が多い（損切りが遅い）
+                    duration = Math.random() < 0.4 ? 
+                        Math.random() * 43200000 :  // 12時間以内が40%
+                        Math.random() * 259200000;  // 72時間以内が60%
+                }
+                
+                const closeTime = new Date(openTime.getTime() + duration);
+                const isWin = Math.random() < winRate;
+                
+                let profit;
+                if (isWin) {
+                    profit = traderData.kpi.avgProfit * (0.5 + Math.random());
+                } else {
+                    profit = traderData.kpi.avgLoss * (0.5 + Math.random());
+                }
+                
+                trades.push({
+                    ticket: `#${(traderData === DEMO_TRADERS.excellent ? 200000 : 
+                              traderData === DEMO_TRADERS.average ? 300000 : 400000) + i}`,
+                    openTime: openTime,
+                    closeTime: closeTime,
+                    type: Math.random() > 0.5 ? 'buy' : 'sell',
+                    size: 0.1,
+                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
+                    profit: Math.round(profit),
+                    isWin: isWin,
+                    duration: duration
+                });
+            }
+            
+            return trades.sort((a, b) => a.openTime.getTime() - b.openTime.getTime());
+        }
+
         // グローバル変数
         let allTrades = [];
         let filteredTrades = [];
@@ -1231,38 +1364,13 @@
             popupOverlay.style.display = 'flex';
         };
 
-        // デモデータ生成関数
+        // デモデータ生成関数（統一データを使用）
         window.generateGoodPerformanceData = function() {
             console.log('Loading good performance demo data...');
             setLoading(true);
             
-            const trades = [];
-            const symbols = ['USDJPY', 'EURJPY', 'GBPJPY'];
-            const baseDate = new Date(2024, 0, 1);
-            
-            for (let i = 0; i < 150; i++) {
-                const openTime = new Date(baseDate.getTime() + Math.random() * 90 * 24 * 60 * 60 * 1000);
-                const duration = Math.random() * 43200000; // 最大12時間
-                const closeTime = new Date(openTime.getTime() + duration);
-                const isWin = Math.random() > 0.35; // 勝率65%
-                const profit = isWin ? 
-                    (Math.random() * 25000 + 8000) : // 勝ち: 8,000-33,000円
-                    -(Math.random() * 12000 + 3000);  // 負け: -3,000--15,000円
-                
-                trades.push({
-                    ticket: `#${200000 + i}`,
-                    openTime: openTime,
-                    closeTime: closeTime,
-                    type: Math.random() > 0.5 ? 'buy' : 'sell',
-                    size: 0.1,
-                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
-                    profit: profit,
-                    isWin: isWin,
-                    duration: duration
-                });
-            }
-            
-            allTrades = trades.sort((a, b) => a.openTime.getTime() - b.openTime.getTime());
+            const traderData = DEMO_TRADERS.excellent;
+            allTrades = generateHoldingTimeBasedTrades(traderData);
             filteredTrades = [...allTrades];
             
             fileNameEl.textContent = 'デモデータ（優秀なトレーダー）を使用中';
@@ -1279,33 +1387,8 @@
             console.log('Loading average performance demo data...');
             setLoading(true);
             
-            const trades = [];
-            const symbols = ['USDJPY', 'EURUSD', 'GBPUSD', 'AUDUSD'];
-            const baseDate = new Date(2024, 0, 1);
-            
-            for (let i = 0; i < 100; i++) {
-                const openTime = new Date(baseDate.getTime() + Math.random() * 90 * 24 * 60 * 60 * 1000);
-                const duration = Math.random() * 86400000; // 最大24時間
-                const closeTime = new Date(openTime.getTime() + duration);
-                const isWin = Math.random() > 0.45; // 勝率55%
-                const profit = isWin ? 
-                    (Math.random() * 18000 + 5000) : // 勝ち: 5,000-23,000円
-                    -(Math.random() * 15000 + 4000);  // 負け: -4,000--19,000円
-                
-                trades.push({
-                    ticket: `#${300000 + i}`,
-                    openTime: openTime,
-                    closeTime: closeTime,
-                    type: Math.random() > 0.5 ? 'buy' : 'sell',
-                    size: 0.1,
-                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
-                    profit: profit,
-                    isWin: isWin,
-                    duration: duration
-                });
-            }
-            
-            allTrades = trades.sort((a, b) => a.openTime.getTime() - b.openTime.getTime());
+            const traderData = DEMO_TRADERS.average;
+            allTrades = generateHoldingTimeBasedTrades(traderData);
             filteredTrades = [...allTrades];
             
             fileNameEl.textContent = 'デモデータ（平均的なトレーダー）を使用中';
@@ -1322,33 +1405,8 @@
             console.log('Loading poor performance demo data...');
             setLoading(true);
             
-            const trades = [];
-            const symbols = ['USDJPY', 'EURUSD', 'GBPUSD', 'AUDUSD', 'EURJPY'];
-            const baseDate = new Date(2024, 0, 1);
-            
-            for (let i = 0; i < 80; i++) {
-                const openTime = new Date(baseDate.getTime() + Math.random() * 90 * 24 * 60 * 60 * 1000);
-                const duration = Math.random() * 172800000; // 最大48時間
-                const closeTime = new Date(openTime.getTime() + duration);
-                const isWin = Math.random() > 0.65; // 勝率35%
-                const profit = isWin ? 
-                    (Math.random() * 15000 + 3000) : // 勝ち: 3,000-18,000円
-                    -(Math.random() * 25000 + 8000);  // 負け: -8,000--33,000円
-                
-                trades.push({
-                    ticket: `#${400000 + i}`,
-                    openTime: openTime,
-                    closeTime: closeTime,
-                    type: Math.random() > 0.5 ? 'buy' : 'sell',
-                    size: 0.1,
-                    symbol: symbols[Math.floor(Math.random() * symbols.length)],
-                    profit: profit,
-                    isWin: isWin,
-                    duration: duration
-                });
-            }
-            
-            allTrades = trades.sort((a, b) => a.openTime.getTime() - b.openTime.getTime());
+            const traderData = DEMO_TRADERS.poor;
+            allTrades = generateHoldingTimeBasedTrades(traderData);
             filteredTrades = [...allTrades];
             
             fileNameEl.textContent = 'デモデータ（改善が必要なトレーダー）を使用中';
